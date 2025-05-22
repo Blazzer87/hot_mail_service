@@ -1,10 +1,13 @@
 import email
 import imaplib
 import os
+import re
 import smtplib
+import time
 from email.header import decode_header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from selenium import webdriver
 
 from dotenv import load_dotenv
 
@@ -105,6 +108,17 @@ class Mail:
                         # Если сообщение не многочастное
                         body = msg.get_payload(decode=True).decode()
 
+                    urls = re.findall(r'https://[^\s<>"]+', body)
+                    cleaned_urls = [url.rstrip('"\'>)') for url in urls]
+                    if cleaned_urls:
+                        print("Найденные ссылки в письме:")
+                        for url in cleaned_urls:
+                            print(url)
+                            driver = webdriver.Chrome()
+                            driver.get(url)
+                            time.sleep(5)
+                            driver.quit()
+
                     print(f'От: {sender}, Тема: {subject}')
                     print(body)
 
@@ -115,3 +129,5 @@ class Mail:
 
         finally:
             mail.logout()
+
+

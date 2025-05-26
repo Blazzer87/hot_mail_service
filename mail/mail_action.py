@@ -9,13 +9,13 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import parseaddr
 
+import openpyxl
 from selenium import webdriver
 
 from dotenv import load_dotenv
 
 
 class Mail:
-
 
     yandex_smtp = ['smtp.yandex.ru', 465]
     mail_smtp = ['smtp.mail.ru', 465]
@@ -38,11 +38,10 @@ class Mail:
         }
 
 
-
     def send_mail(self, recipient, subject, message_body, smtp_options):
 
         message = MIMEMultipart()           # создали объект сообщения
-        message['From'] = self.laba87_test1_yandex_credential['mail']
+        message['From'] = self.laba_qpdev_credential['mail']
         message['To'] = recipient                # кому
         message['Subject'] = subject        # тема сообщения
 
@@ -52,12 +51,11 @@ class Mail:
         try:
             connect = smtplib.SMTP_SSL(*smtp_options)
             # connect.starttls()        используется только с smtplib.SMTP, для незащищенного соединения, которое затем переводится в защищенное.
-            connect.login(user = self.laba87_test1_yandex_credential['mail'], password = self.laba87_test1_yandex_credential['password_IDE'])
+            connect.login(user = self.laba_qpdev_credential['mail'], password = self.laba_qpdev_credential['password_IDE'])
             connect.send_message(msg = message)
             connect.quit()
         except Exception as e:
             print("Ошибка отправки сообщения", e)
-
 
 
     def get_mail(self, filter_criteria):
@@ -136,19 +134,32 @@ class Mail:
         self.send_mail(recipient = recipient,
                        subject = self.reply_subject,
                        message_body = self.message,
-                       smtp_options = self.yandex_smtp)
+                       smtp_options = self.mail_smtp)
         print(f"Ответное сообщение успешно отправлено - {self.message}")
         print("\n")
 
 
     def body_message(self, input_message):
 
-        if "погода" in input_message:
-            body_message = "Да, погода сегодня огонь, погнали завтра на речку?"
-            return body_message
-        else:
-            body_message = "Да, большое спасибо Вам за информацию!"
-            return body_message
+        file_path = os.path.join(os.path.dirname(__file__), 'dialog_model.xlsx')
+        workbook = openpyxl.load_workbook(file_path)
+
+        sheet = workbook.active
+        keywords = []
+
+        for row in sheet.iter_rows(min_row=1, min_col=1, max_col=1, values_only=True):
+            if row[0]:  # Проверяем, что значение не пустое
+                keywords.append(str(row[0]).strip())
+        for i in keywords:
+            if i in input_message:
+                index = keywords.index(i)
+                answer = []
+                for row in sheet.iter_rows(min_row=1, min_col=2, max_col=2, values_only=True):
+                    answer.append(str(row[0]).strip())
+                return answer[index]
+
+        other_answer = 'Большое спасибо за информацию, в ближайшее время мы свяжемся с Вами'
+        return other_answer
 
 
     def extract_sender_name(self, from_header: str) -> str:

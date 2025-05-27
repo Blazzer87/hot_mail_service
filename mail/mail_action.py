@@ -17,7 +17,9 @@ from dotenv import load_dotenv
 class Mail:
 
     yandex_smtp = ['smtp.yandex.ru', 465]   # у Яндекс если SSL то 465 порт, если TLS то 587
-    """Адрес почтового сервера — smtp.yandex.ru.Защита соединения — SSL. Порт — 465. Если почтовый клиент начинает соединение без шифрования — 587."""
+
+    """Адрес почтового сервера — smtp.yandex.ru.Защита соединения — SSL. Порт — 465. Если почтовый клиент начинает соединение без шифрования — 587"""
+
     mail_smtp = ['smtp.mail.ru', 465]
     reply_subject = None
 
@@ -40,6 +42,8 @@ class Mail:
 
     def send_mail(self, recipient, subject, message_body, smtp_options):
 
+        """функция отправляет почту по протоколу SMTP"""
+
         message = MIMEMultipart()           # создали объект сообщения
         message['From'] = self.laba_qpdev_credential['mail']
         message['To'] = recipient                # кому
@@ -59,6 +63,11 @@ class Mail:
 
 
     def get_mail(self, filter_criteria):
+
+        """функция получает почту по протоколу аймап,
+        ищет в папке входящих, через filter_criteria - задаётся условие поиска, UNSEEN например - все непрочитанные
+        далее берет это сообщение и поочерёдно декодирует имя отправителя, адрес отправителя, тему письма и тело письма
+        если в теле письма обнаруживаются ссылки то автоматически происходит их вызов через селениум"""
 
         mail = imaplib.IMAP4_SSL("imap.mail.ru")  # подключаемся к серверу
         try:
@@ -100,6 +109,7 @@ class Mail:
                         # Если сообщение не многочастное
                         body = msg.get_payload(decode=True).decode()
 
+                    # Находим ссылки в теле сообщения, очищаем их и делаем переход по ним
                     urls = re.findall(r'https://[^\s<>"]+', body)
                     cleaned_urls = [url.rstrip('"\'>)') for url in urls]
                     if cleaned_urls:
@@ -129,6 +139,10 @@ class Mail:
 
     def reply_mail(self, recipient, reply_subject, message):
 
+        """функция создаёт ответное сообщение, добавляя Re в тему сообщения,
+        вызывает функцию генерации тела ответа
+        и вызывает функцию отправки сообщения получая отправителя в аргументах"""
+
         self.reply_subject = f"Re: {reply_subject}"
         self.message = self.body_message(input_message = message)
         self.send_mail(recipient = recipient,
@@ -140,6 +154,9 @@ class Mail:
 
 
     def body_message(self, input_message):
+
+        """функция ходит в иммитатор БД - файл dialog_model ,берет каждое слово из столбца А и ищет его в теле сообщения
+        если находит - то возвращает ответ из столбца Б, который соответствует записи поля А"""
 
         file_path = os.path.join(os.path.dirname(__file__), 'dialog_model.xlsx')
         workbook = openpyxl.load_workbook(file_path)
@@ -163,6 +180,8 @@ class Mail:
 
 
     def extract_sender_name(self, from_header: str) -> str:
+
+        """вспомогательная функция "извлекатель" - получает имя отправителя очищаяя от лишнего"""
 
         match = re.search(r'<([^>]+)>', from_header)
         if match:

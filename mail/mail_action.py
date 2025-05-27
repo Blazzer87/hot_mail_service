@@ -8,16 +8,16 @@ from email.header import decode_header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import parseaddr
-
 import openpyxl
 from selenium import webdriver
-
 from dotenv import load_dotenv
+
 
 
 class Mail:
 
-    yandex_smtp = ['smtp.yandex.ru', 465]
+    yandex_smtp = ['smtp.yandex.ru', 465]   # у Яндекс если SSL то 465 порт, если TLS то 587
+    """Адрес почтового сервера — smtp.yandex.ru.Защита соединения — SSL. Порт — 465. Если почтовый клиент начинает соединение без шифрования — 587."""
     mail_smtp = ['smtp.mail.ru', 465]
     reply_subject = None
 

@@ -28,6 +28,7 @@ class Mail:
 
         load_dotenv()
 
+
         self.laba_qpdev_credential = {
             'mail': os.getenv('MAIL_LABA_LOGIN'),
             'password': os.getenv('MAIL_LABA_PASSWORD'),
@@ -40,29 +41,10 @@ class Mail:
         }
 
 
-    def send_mail(self, recipient, subject, message_body, smtp_options):
-
-        """функция отправляет почту по протоколу SMTP"""
-
-        message = MIMEMultipart()           # создали объект сообщения
-        message['From'] = self.laba_qpdev_credential['mail']
-        message['To'] = recipient                # кому
-        message['Subject'] = subject        # тема сообщения
-
-        message.attach(MIMEText(message_body, 'plain'))     # в объект сообщения мы передаём сообщение,
-        # обозначив что его формат будет plain, и это сообщение будет экземпляром класса MIMEText
-
-        try:
-            connect = smtplib.SMTP_SSL(*smtp_options)
-            # connect.starttls()        используется только с smtplib.SMTP, для незащищенного соединения, которое затем переводится в защищенное.
-            connect.login(user = self.laba_qpdev_credential['mail'], password = self.laba_qpdev_credential['password_IDE'])
-            connect.send_message(msg = message)
-            connect.quit()
-        except Exception as e:
-            print("Ошибка отправки сообщения", e)
 
 
-    def get_mail(self, filter_criteria):
+
+    def get_mail(self, mailbox, filter_criteria):
 
         """функция получает почту по протоколу аймап,
         ищет в папке входящих, через filter_criteria - задаётся условие поиска, UNSEEN например - все непрочитанные
@@ -71,7 +53,8 @@ class Mail:
 
         mail = imaplib.IMAP4_SSL("imap.mail.ru")  # подключаемся к серверу
         try:
-            mail.login(self.laba_qpdev_credential['mail'], self.laba_qpdev_credential['password_IDE'])  # логинимся
+            mailbox_adress, mailbox_password = mailbox
+            mail.login(mailbox_adress, mailbox_password)  # логинимся
             mail.select('inbox')  # выбираем папку, которую будем проверять
 
             status, messages = mail.search(None, filter_criteria)
@@ -135,6 +118,30 @@ class Mail:
 
         finally:
             mail.logout()
+
+
+    def send_mail(self, recipient, subject, message_body, smtp_options):
+
+        """функция отправляет почту по протоколу SMTP"""
+
+        message = MIMEMultipart()           # создали объект сообщения
+        message['From'] = self.laba_qpdev_credential['mail']
+        message['To'] = recipient                # кому
+        message['Subject'] = subject        # тема сообщения
+
+        message.attach(MIMEText(message_body, 'plain'))     # в объект сообщения мы передаём сообщение,
+        # обозначив что его формат будет plain, и это сообщение будет экземпляром класса MIMEText
+
+        try:
+            connect = smtplib.SMTP_SSL(*smtp_options)
+            # connect.starttls()        используется только с smtplib.SMTP, для незащищенного соединения, которое затем переводится в защищенное.
+            connect.login(user = self.laba_qpdev_credential['mail'], password = self.laba_qpdev_credential['password_IDE'])
+            connect.send_message(msg = message)
+            connect.quit()
+        except Exception as e:
+            print("Ошибка отправки сообщения", e)
+
+
 
 
     def reply_mail(self, recipient, reply_subject, message):

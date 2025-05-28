@@ -11,40 +11,18 @@ from email.utils import parseaddr
 import openpyxl
 from selenium import webdriver
 from dotenv import load_dotenv
-
+from mail.mail_config import MailConfig
 
 
 class Mail:
 
-    yandex_smtp = ['smtp.yandex.ru', 465]   # у Яндекс если SSL то 465 порт, если TLS то 587
-
-    """Адрес почтового сервера — smtp.yandex.ru.Защита соединения — SSL. Порт — 465. Если почтовый клиент начинает соединение без шифрования — 587"""
-
-    mail_smtp = ['smtp.mail.ru', 465]
+    mailbox : MailConfig
     reply_subject = None
 
+    def __init__(self, mailbox):
+        self.mailbox = MailConfig(mailbox)
 
-    def __init__(self):
-
-        load_dotenv()
-
-
-        self.laba_qpdev_credential = {
-            'mail': os.getenv('MAIL_LABA_LOGIN'),
-            'password': os.getenv('MAIL_LABA_PASSWORD'),
-            'password_IDE': os.getenv('MAIL_LABA_PASSWORD_IDE')
-        }
-
-        self.laba87_test1_yandex_credential = {
-            'mail': os.getenv('YANDEX_LOGIN'),
-            'password_IDE': os.getenv('YANDEX_PASSWORD_IDE')
-        }
-
-
-
-
-
-    def get_mail(self, mailbox, filter_criteria):
+    def get_mail(self, filter_criteria):
 
         """функция получает почту по протоколу аймап,
         ищет в папке входящих, через filter_criteria - задаётся условие поиска, UNSEEN например - все непрочитанные
@@ -53,8 +31,7 @@ class Mail:
 
         mail = imaplib.IMAP4_SSL("imap.mail.ru")  # подключаемся к серверу
         try:
-            mailbox_adress, mailbox_password = mailbox
-            mail.login(mailbox_adress, mailbox_password)  # логинимся
+            mail.login(self.mailbox.mail, self.mailbox.password)  # логинимся
             mail.select('inbox')  # выбираем папку, которую будем проверять
 
             status, messages = mail.search(None, filter_criteria)
@@ -120,12 +97,12 @@ class Mail:
             mail.logout()
 
 
-    def send_mail(self, recipient, subject, message_body, smtp_options):
+    def send_mail(self, recipient, subject, message_body):
 
         """функция отправляет почту по протоколу SMTP"""
 
         message = MIMEMultipart()           # создали объект сообщения
-        message['From'] = self.laba_qpdev_credential['mail']
+        message['From'] = self.mailbox.mail
         message['To'] = recipient                # кому
         message['Subject'] = subject        # тема сообщения
 
@@ -133,14 +110,13 @@ class Mail:
         # обозначив что его формат будет plain, и это сообщение будет экземпляром класса MIMEText
 
         try:
-            connect = smtplib.SMTP_SSL(*smtp_options)
+            connect = smtplib.SMTP_SSL(self.mailbox.smtp_server, self.mailbox.smtp_port)
             # connect.starttls()        используется только с smtplib.SMTP, для незащищенного соединения, которое затем переводится в защищенное.
-            connect.login(user = self.laba_qpdev_credential['mail'], password = self.laba_qpdev_credential['password_IDE'])
+            connect.login(user = self.mailbox.mail, password = self.mailbox.password)
             connect.send_message(msg = message)
             connect.quit()
         except Exception as e:
             print("Ошибка отправки сообщения", e)
-
 
 
 
@@ -151,16 +127,15 @@ class Mail:
         и вызывает функцию отправки сообщения получая отправителя в аргументах"""
 
         self.reply_subject = f"Re: {reply_subject}"
-        self.message = self.body_message(input_message = message)
+        self.message = self.generate_body_message(input_message=message)
         self.send_mail(recipient = recipient,
                        subject = self.reply_subject,
-                       message_body = self.message,
-                       smtp_options = self.mail_smtp)
+                       message_body = self.message)
         print(f"Ответное сообщение успешно отправлено - {self.message}")
         print("\n")
 
 
-    def body_message(self, input_message):
+    def generate_body_message(self, input_message):
 
         """функция ходит в иммитатор БД - файл dialog_model ,берет каждое слово из столбца А и ищет его в теле сообщения
         если находит - то возвращает ответ из столбца Б, который соответствует записи поля А"""

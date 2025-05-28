@@ -3,24 +3,27 @@ import imaplib
 import os
 import re
 import smtplib
-import time
 from email.header import decode_header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import parseaddr
 import openpyxl
-from selenium import webdriver
-from dotenv import load_dotenv
-from mail.mail_config import MailConfig
 
 
-class Mail:
+from mail.browser import Browser
+from mail.mail_message import MailMessage
+from mail.mailbox_config import MailConfig
+
+
+class Mailbox:
 
     mailbox : MailConfig
-    reply_subject = None
+
 
     def __init__(self, mailbox):
         self.mailbox = MailConfig(mailbox)
+        self.last_email_id = None
+        self.reply_subject = None
 
     def get_mail(self, filter_criteria):
 
@@ -39,56 +42,45 @@ class Mail:
 
             # Получаем последнее письмо
             if mail_ids:
-                last_email_id = mail_ids[-1]
-                status, msg_data = mail.fetch(last_email_id, '(RFC822)')
+                self.last_email_id = mail_ids[-1]
+                status, msg_data = mail.fetch(self.last_email_id, '(RFC822)')
                 msg = email.message_from_bytes(msg_data[0][1])
 
-                # Декодируем заголовок "От" и получаем имя отправителя
-                sender_name = decode_header(msg['From'])[0][0]
-                if isinstance(sender_name, bytes):
-                    sender_name = sender_name.decode()
-                sender_name = self.extract_sender_name(sender_name)
+                message = MailMessage(msg)
 
-                # Получаем адрес отправителя
-                sender_email = parseaddr(msg['From'])[1]
+                sender_mail = message.get_sender_mailbox()
+                subject = message.get_mail_subject()
+                body = message.get_message_body()
+                message.find_url_in_message()
+                message_time = message.get_time_message()
 
-                # Декодируем заголовок "Тема"
-                subject = decode_header(msg['Subject'])[0][0]
-                if isinstance(subject, bytes):
-                    subject = subject.decode()
+                print("Получено новое сообщение!")
+                print(f'От: {sender_mail}, Тема: {subject}')
+                print(message_time)
+                print(body)
 
-                    # Декодируем тело сообщения
-                    body = ""
-                    if msg.is_multipart():
-                        for part in msg.walk():
-                            # Если часть - текстовая
-                            if part.get_content_type() == "text/plain":
-                                body = part.get_payload(decode=True).decode()
-                                break  # Выходим из цикла после первого текстового содержимого
-                    else:
-                        # Если сообщение не многочастное
-                        body = msg.get_payload(decode=True).decode()
+                return sender_mail, subject, body, message_time
 
-                    # Находим ссылки в теле сообщения, очищаем их и делаем переход по ним
-                    urls = re.findall(r'https://[^\s<>"]+', body)
-                    cleaned_urls = [url.rstrip('"\'>)') for url in urls]
-                    if cleaned_urls:
-                        print("Найденные ссылки в письме:")
-                        for url in cleaned_urls:
-                            print(url)
-                            options = webdriver.ChromeOptions()
-                            options.page_load_strategy = 'eager'
-                            driver = webdriver.Chrome(options = options)
-                            driver.get(url)
-                            time.sleep(2)
-                            driver.quit()
+        except Exception as e:
+            print("Ошибка:", e)
 
-                    print("Получено новое сообщение!")
-                    print(f'От: {sender_email}, Тема: {subject}')
-                    print(body)
-                    print("\n")
+        finally:
+            mail.logout()
 
-                    return sender_email, subject, body
+
+    def mark_mail_as_unread(self):
+
+        """Функция устанавливает признак 'непрочитано' письму по его айдишнику."""
+
+        mail = imaplib.IMAP4_SSL("imap.mail.ru")  # подключаемся к серверу
+        try:
+            mail.login(self.mailbox.mail, self.mailbox.password)  # логинимся
+            mail.select('inbox')  # выбираем папку, которую будем проверять
+
+            # Устанавливаем флаг 'непрочитано' для письма
+            mail.store(self.last_email_id, '-FLAGS', '\Seen')
+
+            print(f"Письмо с ID {self.last_email_id} помечено как непрочитанное.")
 
         except Exception as e:
             print("Ошибка:", e)
@@ -115,12 +107,14 @@ class Mail:
             connect.login(user = self.mailbox.mail, password = self.mailbox.password)
             connect.send_message(msg = message)
             connect.quit()
+            print(f"Ответное сообщение успешно отправлено - {self.message}")
+            print("\n")
         except Exception as e:
             print("Ошибка отправки сообщения", e)
 
 
 
-    def reply_mail(self, recipient, reply_subject, message):
+    def reply_mail(self, sender_mail, reply_subject, message):
 
         """функция создаёт ответное сообщение, добавляя Re в тему сообщения,
         вызывает функцию генерации тела ответа
@@ -128,14 +122,12 @@ class Mail:
 
         self.reply_subject = f"Re: {reply_subject}"
         self.message = self.generate_body_message(input_message=message)
-        self.send_mail(recipient = recipient,
+        self.send_mail(recipient = sender_mail,
                        subject = self.reply_subject,
                        message_body = self.message)
-        print(f"Ответное сообщение успешно отправлено - {self.message}")
-        print("\n")
 
 
-    def generate_body_message(self, input_message):
+    def generate_body_message(self, input_message: str):
 
         """функция ходит в иммитатор БД - файл dialog_model ,берет каждое слово из столбца А и ищет его в теле сообщения
         если находит - то возвращает ответ из столбца Б, который соответствует записи поля А"""
@@ -150,7 +142,7 @@ class Mail:
             if row[0]:  # Проверяем, что значение не пустое
                 keywords.append(str(row[0]).strip())
         for i in keywords:
-            if i in input_message:
+            if i.lower() in input_message.lower():
                 index = keywords.index(i)
                 answer = []
                 for row in sheet.iter_rows(min_row=1, min_col=2, max_col=2, values_only=True):
@@ -159,13 +151,3 @@ class Mail:
 
         other_answer = 'Большое спасибо за информацию, в ближайшее время мы свяжемся с Вами'
         return other_answer
-
-
-    def extract_sender_name(self, from_header: str) -> str:
-
-        """вспомогательная функция "извлекатель" - получает имя отправителя очищаяя от лишнего"""
-
-        match = re.search(r'<([^>]+)>', from_header)
-        if match:
-            return match.group(1)
-        return from_header.strip()

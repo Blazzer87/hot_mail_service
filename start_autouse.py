@@ -4,7 +4,7 @@ from mail.accept_mail_list import accept_mail_list
 from mail.mail_action import Mail
 
 
-def test_auto_reply(mailbox = 'slaba'):
+def test_auto_reply(mailbox = 'slaba', minimal_timeout_min = 3, maximum_timeout_min = 30):
 
     mail_client = Mail(mailbox)
 
@@ -31,5 +31,3 @@ def test_auto_reply(mailbox = 'slaba'):
         time.sleep(10)
 
 
-min_timeout_sec = 3
-max_timeout = 30

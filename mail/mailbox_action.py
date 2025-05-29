@@ -1,18 +1,11 @@
 import email
 import imaplib
 import os
-import re
 import smtplib
-from email.header import decode_header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import parseaddr
-
 import allure
 import openpyxl
-
-
-from mail.browser import Browser
 from mail.mail_message import MailMessage
 from mail.mailbox_config import MailConfig
 

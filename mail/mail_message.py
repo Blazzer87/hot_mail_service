@@ -134,13 +134,13 @@ class MailMessage:
 
     @ allure.step('Получение времени сообщения')
     def get_time_message(self):
-
         """Получаем время сообщения"""
-
         date = self.msg['Date']
         message_time = parsedate_to_datetime(date)
 
-        allure.attach(str(message_time), 'Время сообщения')  # Логируем время сообщения
-        return message_time
+        # Преобразуем datetime в строку
+        message_time_for_allure = message_time.strftime('%d-%m-%Y %H:%M:%S').encode()
 
-
+        # Логируем время сообщения
+        allure.attach(message_time_for_allure, 'Время сообщения')  # Кодируем строку в байты
+        return message_time, message_time_for_allure

@@ -1,15 +1,14 @@
 import random
 import time
-
 import allure
 import pytz
 from datetime import datetime, timedelta
-
+from config import get_config_range
 from mail.accept_mail_list import accept_mail_list
 from mail.mailbox_action import Mailbox
 
 
-def test_auto_reply(mailbox='slaba', min_timeout_min=4, max_timeout_min=5):
+def test_auto_reply(mailbox='slaba'):
     mail_client = Mailbox(mailbox)
 
     while True:
@@ -21,6 +20,8 @@ def test_auto_reply(mailbox='slaba', min_timeout_min=4, max_timeout_min=5):
 
                 """получаем из входящего сообщения отправителя, тему письма и тело письма"""
                 sender, subject, body, message_time = unread_email
+
+                """ПИСЬМО ПОСТОРОНЕННГО ЯЩИКА НЕ ЧИТАТЬ!!!"""
 
                 with allure.step(f'Обработка письма от {sender} с темой "{subject}"'):
                     allure.attach(body, 'Тело письма')  # Логируем тело письма
@@ -37,7 +38,7 @@ def test_auto_reply(mailbox='slaba', min_timeout_min=4, max_timeout_min=5):
 
                             """если с момент получения сообщения прошло больше минут чем определено в случайном диапазоне из аргументов
                             то происходит отправка сообщения"""
-                            if time_difference > timedelta(minutes=random.randrange(min_timeout_min, max_timeout_min)):
+                            if time_difference > timedelta(minutes=random.randrange(*get_config_range(mailbox))):
 
                                 with allure.step('Отправка ответного письма'):
 
@@ -45,6 +46,7 @@ def test_auto_reply(mailbox='slaba', min_timeout_min=4, max_timeout_min=5):
                                     1) generate_body_message - анализа входящего тела сообщения на наличие маркерных слов и генерации ответного сообщения
                                     2) send_mail - отправки ответного сообщения
                                     3) добавления к теме письма "Re" """
+                                    mail_client.open_url_from_message()
                                     mail_client.reply_mail(sender, subject, body)
                                     allure.attach(f'Ответ отправлен отправителю {sender}', 'Статус отправки')
                             else:
@@ -61,4 +63,4 @@ def test_auto_reply(mailbox='slaba', min_timeout_min=4, max_timeout_min=5):
                         allure.attach(f'Ответ не отправлен: {sender} отсутствует в списке разрешенных', 'Статус ответа')
 
         """тут задаётся таймаут проверки наличия непрочитанных входящих"""
-        time.sleep(30)
+        time.sleep(10)

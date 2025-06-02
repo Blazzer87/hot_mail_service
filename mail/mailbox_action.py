@@ -19,6 +19,7 @@ class Mailbox:
         self.mailbox = MailConfig(mailbox)
         self.last_email_id = None
         self.reply_subject = None
+        self.message = None
 
 
     def get_mail(self, filter_criteria):
@@ -54,19 +55,20 @@ class Mailbox:
                     msg = email.message_from_bytes(msg_data[0][1])
                     allure.attach(str(msg), 'Данные последнего письма')  # Логируем данные письма
 
-                    message = MailMessage(msg)
+                    self.message = MailMessage(msg)
 
                     with allure.step('Извлекаем информацию из письма'):
-                        sender_mail = message.get_sender_mailbox()
-                        subject = message.get_mail_subject()
-                        body = message.get_message_body()
-                        message.find_url_in_message()
-                        message_time = message.get_time_message()
-
+                        sender_mail = self.message.get_sender_mailbox()
                         allure.attach(sender_mail, 'Отправитель')  # Логируем отправителя
+
+                        subject = self.message.get_mail_subject()
                         allure.attach(subject, 'Тема письма')  # Логируем тему письма
+
+                        body = self.message.get_message_body()
                         allure.attach(body, 'Тело письма')  # Логируем тело письма
-                        allure.attach(message_time, 'Время сообщения')  # Логируем время сообщения
+
+                        message_time, message_time_for_allure = self.message.get_time_message()
+                        allure.attach(message_time_for_allure, 'Время сообщения')  # Логируем время сообщения
 
                         print("Получено новое сообщение!")
                         print(f'От: {sender_mail}, Тема: {subject}')
@@ -84,6 +86,10 @@ class Mailbox:
             with allure.step('Выходим из почтового ящика'):
                 mail.logout()
 
+
+    def open_url_from_message(self):
+        with allure.step('Проверяем наличие ссылок в теле письма'):
+            self.message.find_url_in_message()
 
 
     def mark_mail_as_unread(self):
@@ -170,7 +176,7 @@ class Mailbox:
         """Функция ходит в иммитатор БД - файл dialog_model, берет каждое слово из столбца А и ищет его в теле сообщения,
         если находит - то возвращает ответ из столбца Б, который соответствует записи поля А"""
 
-        file_path = os.path.join(os.path.dirname(file), 'dialog_model.xlsx')
+        file_path = os.path.join(os.path.dirname(__file__), 'dialog_model.xlsx')
         workbook = openpyxl.load_workbook(file_path)
         sheet = workbook.active
         keywords = []

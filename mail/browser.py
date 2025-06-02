@@ -1,3 +1,5 @@
+import time
+
 import allure
 from selenium import webdriver
 
@@ -19,6 +21,7 @@ class Browser:
 
         allure.attach(self.url, 'URL для открытия')  # Логируем URL перед открытием
         self.driver.get(self.url)
+        time.sleep(2)
         allure.attach('Страница загружена', 'Статус загрузки страницы')  # Логируем статус загрузки
         self.driver.quit()
 

@@ -1,3 +1,3 @@
-slaba = {'min_timeout_min': 5, 'max_timeout_min': 7}
+slaba = {'min_timeout_min': 1, 'max_timeout_min': 3}
 
 

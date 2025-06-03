@@ -6,6 +6,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import allure
 import openpyxl
+
+from mail.database import Database
 from mail.mail_message import MailMessage
 from mail.mailbox_config import MailConfig
 
@@ -17,6 +19,7 @@ class Mailbox:
 
     def __init__(self, mailbox):
         self.mailbox = MailConfig(mailbox)
+        self.database = None
         self.last_email_id = None
         self.reply_subject = None
         self.message = None
@@ -79,8 +82,8 @@ class Mailbox:
 
         except Exception as e:
             with allure.step('Обработка ошибки'):
-                print("Ошибка:", e)
-                allure.attach(str(e), 'Ошибка')  # Логируем текст ошибки
+                print("Ошибка функции get_mail:", e)
+                allure.attach(str(e), 'Ошибка функции get_mail')  # Логируем текст ошибки
 
         finally:
             with allure.step('Выходим из почтового ящика'):
@@ -113,8 +116,8 @@ class Mailbox:
 
         except Exception as e:
             with allure.step('Обработка ошибки'):
-                print("Ошибка:", e)
-                allure.attach(str(e), 'Ошибка')  # Логируем текст ошибки
+                print("Ошибка функции mark_mail_as_unread:", e)
+                allure.attach(str(e), 'Ошибка функции mark_mail_as_unread')  # Логируем текст ошибки
 
         finally:
             with allure.step('Выходим из почтового ящика'):
@@ -148,8 +151,8 @@ class Mailbox:
 
         except Exception as e:
             with allure.step('Обработка ошибки отправки сообщения'):
-                print("Ошибка отправки сообщения:", e)
-                allure.attach(str(e), 'Ошибка отправки')  # Логируем текст ошибки
+                print("Ошибка отправки сообщения в функции send_mail:", e)
+                allure.attach(str(e), 'Ошибка отправки сообщения в функции send_mail')  # Логируем текст ошибки
 
         finally:
             with allure.step('Закрываем соединение с SMTP сервером'):
@@ -164,45 +167,82 @@ class Mailbox:
         и вызывает функцию отправки сообщения получая отправителя в аргументах"""
 
         self.reply_subject = f"Re: {reply_subject}"
-        self.message = self.generate_body_message(input_message=message)
+        self.message = self.generate_body_message_sourseDB(input_message=message)
         self.send_mail(recipient = sender_mail,
                        subject = self.reply_subject,
                        message_body = self.message)
 
 
+    # def generate_body_message(self, input_message: str):
+    #
+    #     """Функция ходит в иммитатор БД - файл dialog_model, берет каждое слово из столбца А и ищет его в теле сообщения,
+    #     если находит - то возвращает ответ из столбца Б, который соответствует записи поля А"""
+    #
+    #     file_path = os.path.join(os.path.dirname(__file__), 'dialog_model.xlsx')
+    #     workbook = openpyxl.load_workbook(file_path)
+    #     sheet = workbook.active
+    #     keywords = []
+    #
+    #     with allure.step('Чтение ключевых слов из файла'):
+    #         for row in sheet.iter_rows(min_row=1, min_col=1, max_col=1, values_only=True):
+    #             if row[0]:  # Проверяем, что значение не пустое
+    #                 keyword = str(row[0]).strip()
+    #                 keywords.append(keyword)
+    #                 allure.attach(keyword, 'Ключевое слово')  # Логируем каждое ключевое слово
+    #
+    #     with allure.step('Поиск совпадений в сообщении'):
+    #         for i in keywords:
+    #             if i.lower() in input_message.lower():
+    #                 index = keywords.index(i)
+    #                 answer = []
+    #
+    #                 with allure.step('Получение ответа из файла'):
+    #                     for row in sheet.iter_rows(min_row=1, min_col=2, max_col=2, values_only=True):
+    #                         answer.append(str(row[0]).strip())
+    #                     response = answer[index]
+    #                     allure.attach(response, 'Ответ')  # Логируем найденный ответ
+    #                     return response
+    #
+    #     other_answer = 'Большое спасибо за информацию, в ближайшее время мы свяжемся с Вами'
+    #     with allure.step('Не найдено совпадений'):
+    #         allure.attach(other_answer, 'Ответ по умолчанию')  # Логируем ответ по умолчанию
+    #     return other_answer
 
-    def generate_body_message(self, input_message: str):
 
-        """Функция ходит в иммитатор БД - файл dialog_model, берет каждое слово из столбца А и ищет его в теле сообщения,
-        если находит - то возвращает ответ из столбца Б, который соответствует записи поля А"""
+    def generate_body_message_sourseDB(self, input_message: str):
 
-        file_path = os.path.join(os.path.dirname(__file__), 'dialog_model.xlsx')
-        workbook = openpyxl.load_workbook(file_path)
-        sheet = workbook.active
-        keywords = []
+        self.database = Database()
 
-        with allure.step('Чтение ключевых слов из файла'):
-            for row in sheet.iter_rows(min_row=1, min_col=1, max_col=1, values_only=True):
-                if row[0]:  # Проверяем, что значение не пустое
-                    keyword = str(row[0]).strip()
-                    keywords.append(keyword)
-                    allure.attach(keyword, 'Ключевое слово')  # Логируем каждое ключевое слово
+        with allure.step('Получение слов-маркеров из БД'):
+            marker_list = self.database.get_list_with_marker_words()
 
-        with allure.step('Поиск совпадений в сообщении'):
-            for i in keywords:
+        with allure.step('Поиск совпадений макеров в сообщении'):
+            match_list = []
+
+            for i in marker_list:
                 if i.lower() in input_message.lower():
-                    index = keywords.index(i)
-                    answer = []
+                    match_list.append(i.lower())
 
-                    with allure.step('Получение ответа из файла'):
-                        for row in sheet.iter_rows(min_row=1, min_col=2, max_col=2, values_only=True):
-                            answer.append(str(row[0]).strip())
-                        response = answer[index]
-                        allure.attach(response, 'Ответ')  # Логируем найденный ответ
-                        return response
+            if match_list:
+                with allure.step('Совпадения найдены, генерируется рандомный ответ'):
+                    random_answer = self.database.get_random_answer_by_themes_id(marker_list=match_list)
+                    allure.attach(random_answer, "Сгенерированное тело сообщения с учётом приоритета темы")
+                    self.database.close_connect()
+                    return random_answer
 
-        other_answer = 'Большое спасибо за информацию, в ближайшее время мы свяжемся с Вами'
-        with allure.step('Не найдено совпадений'):
+        with allure.step('Не найдено слов-маркеров в теле входящего сообщения'):
+            other_answer = 'Большое спасибо за информацию, в ближайшее время мы свяжемся с Вами'
             allure.attach(other_answer, 'Ответ по умолчанию')  # Логируем ответ по умолчанию
-        return other_answer
+            return other_answer
+
+
+
+
+
+
+
+
+
+
+
 

@@ -173,7 +173,7 @@ class Mailbox:
                        message_body = self.message)
 
 
-    # def generate_body_message(self, input_message: str):
+    # def generate_body_message_sourceXLS(self, input_message: str):
     #
     #     """Функция ходит в иммитатор БД - файл dialog_model, берет каждое слово из столбца А и ищет его в теле сообщения,
     #     если находит - то возвращает ответ из столбца Б, который соответствует записи поля А"""
@@ -211,6 +211,10 @@ class Mailbox:
 
     def generate_body_message_sourseDB(self, input_message: str):
 
+        """Функиця создаёт соединение с БД, получает список слов-маркеров и ищет каждое из них в теле входящего сообщения
+        если совпадение найдено то определяет затронутые темы в сообщении, находит тему с наибольшим приоритетом и рандом берёт одно из сообщений принадлежащих этой теме
+        если совпадений не найдено, то возвращает заготовленный общий ответ"""
+
         self.database = Database()
 
         with allure.step('Получение слов-маркеров из БД'):
@@ -235,14 +239,6 @@ class Mailbox:
             allure.attach(other_answer, 'Ответ по умолчанию')  # Логируем ответ по умолчанию
             self.database.close_connect()
             return other_answer
-
-
-
-
-
-
-
-
 
 
 

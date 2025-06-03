@@ -3,7 +3,7 @@ import time
 import allure
 import pytz
 from datetime import datetime, timedelta
-from config import get_config_range
+from config import get_config_timeout
 from mail.accept_mail_list import accept_mail_list
 from mail.mailbox_action import Mailbox
 
@@ -38,7 +38,7 @@ def test_auto_reply(mailbox='slaba'):
 
                             """если с момент получения сообщения прошло больше минут чем определено в случайном диапазоне из аргументов
                             то происходит отправка сообщения"""
-                            if time_difference > timedelta(minutes=random.randrange(*get_config_range(mailbox))):
+                            if time_difference > timedelta(minutes=random.randrange(*get_config_timeout(mailbox))):
 
                                 with allure.step('Отправка ответного письма'):
 

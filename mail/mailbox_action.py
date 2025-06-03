@@ -233,6 +233,7 @@ class Mailbox:
         with allure.step('Не найдено слов-маркеров в теле входящего сообщения'):
             other_answer = 'Большое спасибо за информацию, в ближайшее время мы свяжемся с Вами'
             allure.attach(other_answer, 'Ответ по умолчанию')  # Логируем ответ по умолчанию
+            self.database.close_connect()
             return other_answer
 
 

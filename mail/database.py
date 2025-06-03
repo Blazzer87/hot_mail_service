@@ -25,12 +25,12 @@ class Database:
 
     def db_connect(self):
         try:
-            db = psycopg2.connect(database=self.database,
+            self.db = psycopg2.connect(database=self.database,
                                           host=self.host,
                                           user=self.user,
                                           password=self.password,
                                           port=self.port)
-            self.cursor = db.cursor()
+            self.cursor = self.db.cursor()
 
         except Exception as error:
             print("Ошибка в функции db_connect:", error)
@@ -74,7 +74,6 @@ class Database:
         if self.db:
             self.cursor.close()
             self.db.close()
-            print("Соединение закрыто")
 
 
 

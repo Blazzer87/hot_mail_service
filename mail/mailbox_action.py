@@ -60,25 +60,25 @@ class Mailbox:
 
                     self.message = MailMessage(msg)
 
-                    with allure.step('Извлекаем информацию из письма'):
-                        sender_mail = self.message.get_sender_mailbox()
-                        allure.attach(sender_mail, 'Отправитель')  # Логируем отправителя
+                with allure.step('Извлекаем информацию из письма'):
+                    sender_mail = self.message.get_sender_mailbox()
+                    allure.attach(sender_mail, 'Отправитель')  # Логируем отправителя
 
-                        subject = self.message.get_mail_subject()
-                        allure.attach(subject, 'Тема письма')  # Логируем тему письма
+                    subject = self.message.get_mail_subject()
+                    allure.attach(subject, 'Тема письма')  # Логируем тему письма
 
-                        body = self.message.get_message_body()
-                        allure.attach(body, 'Тело письма')  # Логируем тело письма
+                    body = self.message.get_message_body()
+                    allure.attach(body, 'Тело письма')  # Логируем тело письма
 
-                        message_time, message_time_for_allure = self.message.get_time_message()
-                        allure.attach(message_time_for_allure, 'Время сообщения')  # Логируем время сообщения
+                    message_time, message_time_for_allure = self.message.get_time_message()
+                    allure.attach(message_time_for_allure, 'Время сообщения')  # Логируем время сообщения
 
-                        print("Получено новое сообщение!")
-                        print(f'От: {sender_mail}, Тема: {subject}')
-                        print(message_time)
-                        print(body)
+                    print("Получено новое сообщение!")
+                    print(f'От: {sender_mail}, Тема: {subject}')
+                    print(message_time)
+                    print(body)
 
-                        return sender_mail, subject, body, message_time
+                return sender_mail, subject, body, message_time
 
         except Exception as e:
             with allure.step('Обработка ошибки'):

@@ -42,11 +42,14 @@ class Mailbox:
         try:
             mail.login(self.mailbox.mail, self.mailbox.password)  # логинимся
 
+
+            """вот так можно выяснить ка кназываются папки в почте"""
+
             result, folders = mail.list()
             for folder in folders:
                 print(folder)
 
-            mail.select('&BCEEPwQwBDw-')  # выбираем папку, которую будем проверять
+            mail.select('&BCEEPwQwBDw-')  # выбираем папку, которую будем проверять (да, вот такой ебалой называется папка спам у мейла, и это знание стоит пары часов жизни"
 
             xxx = mail.search(None, filter_criteria)
             print('это тип объекта xxx ', type(xxx))
@@ -62,6 +65,7 @@ class Mailbox:
             mail_ids = messages[0].split()
 
             print('это тип объекта mail_ids ', type(mail_ids))
+            print('это длинна объекта mail_ids ', len(mail_ids))
             print('это объект mail_ids ', mail_ids)
 
 
@@ -117,4 +121,4 @@ class Mailbox:
 
 
 box = Mailbox('slaba')
-box.get_mail('ALL')
+box.get_mail('(UNSEEN)')

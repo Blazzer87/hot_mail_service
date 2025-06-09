@@ -2,6 +2,7 @@ import email
 import imaplib
 import os
 import smtplib
+import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import allure
@@ -171,6 +172,40 @@ class Mailbox:
         self.send_mail(recipient = sender_mail,
                        subject = self.reply_subject,
                        message_body = self.message)
+
+
+    def find_spam_count(self):
+
+        with allure.step('Создаём объект IMAP4_SSL для чтения почты'):
+            mail = imaplib.IMAP4_SSL("imap.mail.ru")  # подключаемся к серверу
+
+        try:
+            mail.login(self.mailbox.mail, self.mailbox.password)  # логинимся
+            mail.select('&BCEEPwQwBDw-')
+            messages = mail.search(None, '(UNSEEN)')[1]
+            mail_ids = messages[0].split()
+            spam_count_before_send = len(mail_ids)
+
+            # """ сюда можно вписать отправку например"""
+            #
+            # time.sleep(10)
+            #
+            # messages = mail.search(None, '(UNSEEN)')[1]
+            # mail_ids = messages[0].split()
+            # spam_count_after_send = len(mail_ids)
+
+            print(f"Обнаружено {spam_count_before_send} писем спам")
+
+
+        except Exception as e:
+            with allure.step('Обработка ошибки'):
+                print("Ошибка функции get_mail:", e)
+                allure.attach(str(e), 'Ошибка функции find_spam_count')  # Логируем текст ошибки
+
+        finally:
+            with allure.step('Выходим из почтового ящика'):
+                mail.logout()
+
 
 
     # def generate_body_message_sourceXLS(self, input_message: str):
